@@ -1,0 +1,48 @@
+Igor Oliveira de Mello - 2512779 - 3WB
+Rafael Carvalho Solberg - 2511672 - 3WB
+
+A função cria_func gera o código de máquina de uma nova versão da função f, gravando esse código no vetor "codigo".
+A nova função chama f passando os argumentos descritos em params[], podendo amarrar valores fixos
+ou valores de variáveis a um ou mais parâmetros.
+
+O código gerado segue sempre a estrutura:
+push %rbp / mov %rsp,%rbp - prólogo (alinha a pilha para chamar f)
+sub $32,%rsp - reserva espaço local alinhado a 16
+
+# salva na pilha os argumentos recebidos pelos parâmetros PARAM.
+Eles chegam em %rdi, %rsi, %rdx, na ordem em que aparecem em
+params[], e são guardados em -8(%rbp), -16(%rbp), -24(%rbp).
+
+# monta os registradores de argumento de f (slot 0 -> %rdi, slot 1 -> %rsi, slot 2 -> %rdx):
+FIX -> movabs da constante para o registrador;
+IND -> movabs do endereço para %rax e leitura do valor
+(4 bytes se INT_PAR, 8 bytes se PTR_PAR);
+PARAM -> lê da pilha o valor que foi salvo na fase 1.
+
+movabs $f,%rax / call *%rax - chamada indireta a f
+leave / ret - epílogo, preservando o retorno de f em %rax
+
+O uso de dessas duas fases evita o problema de sobrescrever um argumento recebido
+antes de utilizá-lo (por exemplo, no caso do memcmp, em que o 1º argumento
+da nova função deve ir para %rsi enquanto %rdi recebe um valor fixo).
+
+Todos os testes abaixo foram executados com sucesso (saída "OK"):
+A) 1 parâmetro FIX (a nova função ignora a entrada e usa a constante).
+dobro com arg amarrado em 21 -> retorna 42.
+
+B) 1 parâmetro IND com ponteiro (PTR_PAR).
+função que lê o 1º caractere de uma string, amarrada a uma
+variável char* -> acompanha o valor atual da variável.
+
+C) 2 parâmetros, ambos PARAM (verifica repasse e ordem).
+sub(10,3) -> 7.
+
+D) 3 parâmetros nas combinações FIX, IND, PARAM.
+soma3(100, v, c) com v=20 e c=3 -> 123.
+
+E) vezes10: mult(x,10) com x=PARAM e y=FIX.
+vezes10(7) -> 70.
+
+F) memcmp com 3 parâmetros (FIX, PARAM, PARAM) - caso embaralhado.
+compara o prefixo de uma string contra uma string fixa;
+prefixo de tamanho 12 -> igual; tamanho 16 -> diferente.
